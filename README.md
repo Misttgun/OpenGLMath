@@ -1,2 +1,2 @@
-# OpenGLMath
-Projet opengl math
+# OpenGL
+Repo du projet de math
