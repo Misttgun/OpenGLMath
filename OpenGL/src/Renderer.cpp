@@ -1,32 +1,45 @@
 #include "Renderer.h"
 
 #include <iostream>
+#include <GL/glew.h>
 
-void GLClearError()
+void GlClearError()
 {
 	while (glGetError() != GL_NO_ERROR);
 }
 
-bool GLLogCall(const char* function, const char* file, int line)
+bool GlLogCall(const char* function, const char* file, int line)
 {
-	while (GLenum error = glGetError())
+	while (auto errorCode = glGetError())
 	{
-		std::cout << "[OpenGL Error] (" << error << "): " << function <<
-			" " << file << ":" << line << std::endl;
+		std::string error;
+
+		switch (errorCode)
+		{
+		case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
+		case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
+		case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
+		case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
+		case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
+		case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
+		case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+		}
+
+		std::cout << "[OpenGL Error] " << error << ": "
+			<< function << " " << file << ":" << line << std::endl;
 		return false;
 	}
 	return true;
 }
 
-void Renderer::Clear() const
+void Renderer::clear() const
 {
-	GLCall(glClear(GL_COLOR_BUFFER_BIT));
+	GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 }
 
-void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const
+void Renderer::draw(const VertexArray& va, const unsigned int count, const Shader& shader) const
 {
-	shader.Bind();
-	va.Bind();
-	ib.Bind();
-	GLCall(glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
+	shader.bind();
+	va.bind();
+	GL_CALL(glDrawArrays(GL_LINE_LOOP, 0, count));
 }

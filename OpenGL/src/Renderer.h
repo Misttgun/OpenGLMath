@@ -1,22 +1,19 @@
 #pragma once
 
-#include <GL/glew.h>
-
 #include "VertexArray.h"
-#include "IndexBuffer.h"
 #include "Shader.h"
 
 #define ASSERT(x) if (!(x)) __debugbreak();
-#define GLCall(x) GLClearError();\
+#define GL_CALL(x) GlClearError();\
 	x;\
-	ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+	ASSERT(GlLogCall(#x, __FILE__, __LINE__))
 
-void GLClearError();
-bool GLLogCall(const char* function, const char* file, int line);
+void GlClearError();
+bool GlLogCall(const char* function, const char* file, int line);
 
 class Renderer
 {
 public:
-	void Clear() const;
-	void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const;
+	void clear() const;
+	void draw(const VertexArray& va, unsigned int count, const Shader& shader) const;
 };
