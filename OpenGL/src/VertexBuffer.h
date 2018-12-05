@@ -10,4 +10,5 @@ public:
 
 	void bind() const;
 	void unbind() const;
+	void edit(const void* data, unsigned int size);
 };

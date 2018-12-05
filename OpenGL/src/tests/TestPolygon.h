@@ -25,7 +25,7 @@ namespace test {
 		std::unique_ptr<Shader> mShader_;
 
 		glm::mat4 mProj_, mView_;
-		glm::vec3 mTranslation_;
+		glm::vec3 mTranslation_; 
 		float mColor_[4];
 	};
 

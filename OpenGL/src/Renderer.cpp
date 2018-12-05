@@ -10,7 +10,8 @@ void GlClearError()
 
 bool GlLogCall(const char* function, const char* file, int line)
 {
-	while (auto errorCode = glGetError())
+	GLenum errorCode;
+	while ((errorCode = glGetError()) != GL_NO_ERROR)
 	{
 		std::string error;
 
