@@ -14,14 +14,16 @@
 #include "imgui/imgui_impl_glfw_gl3.h"
 
 #include "tests/TestPolygon.h"
-#include <stdint.h>
+#include <cstdint>
 
-// Global variables -> Rendre ça propre si on a le temps...
+// Variables globales -> Rendre ça propre si on a le temps...
 bool polygonCreation;
+bool fenetreCreation;
 glm::mat4 proj, view;
 const int WIDTH = 1024;
 const int HEIGHT = 768;
-std::unique_ptr<Polygon> pol;
+std::unique_ptr<Polygon> polygon;
+std::unique_ptr<Polygon> fenetre;
 
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -29,8 +31,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 int main(void)
 {
-	// Initialize app global variables
+	// Initialisation des variables globales
 	polygonCreation = false;
+	fenetreCreation = false;
 	proj = glm::ortho(0.0f, static_cast<float>(WIDTH), static_cast<float>(HEIGHT), 0.0f, -1.0f, 1.0f);
 	view = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
 	auto vp = view * proj;
@@ -64,19 +67,25 @@ int main(void)
 	GL_CALL(glEnable(GL_BLEND));
 	GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
+	// Creation du renderer et du shader
 	Renderer renderer;
-	pol = std::make_unique<Polygon>();
+	std::unique_ptr<Shader> shader = std::make_unique<Shader>("res/shaders/Basic.shader");
+	shader->bind();
+	shader->setUniform4F("u_Color", 1.0f, 1.0f, 1.0f, 1.0f);
 
+	// Initialisation de la fenetre et du polygon
+	fenetre = std::make_unique<Polygon>(0.0f, 0.0f, 1.0f);
+	polygon = std::make_unique<Polygon>(1.0f, 0.0f, 0.0f);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+	// Initialisation de IMGUI
 	ImGui::CreateContext();
 	ImGui_ImplGlfwGL3_Init(window, true);
 	ImGui::StyleColorsDark();
 
-	/*test::Test* currentTest = nullptr;
-	test::TestMenu* testMenu = new test::TestMenu(currentTest);
-	currentTest = testMenu;
-
-	testMenu->RegisterTest<test::TestPolygon>("Rectangle");*/
-
+	//Boucle de rendu
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -84,8 +93,10 @@ int main(void)
 		GL_CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 		renderer.clear();
 
-		pol->onRender(vp);
+		polygon->onRender(vp, shader.get());
+		fenetre->onRender(vp, shader.get());
 
+		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
 		ImGui::Begin("Menu");
 		if (ImGui::CollapsingHeader("Instructions"))
@@ -94,14 +105,15 @@ int main(void)
 			ImGui::BulletText("F pour la creation de la fenetre.");
 		}
 
+		//TODO Trouver une autre solution pour afficher les sections
 		if (ImGui::CollapsingHeader("Fenetre"))
 		{
-
+			fenetre->onImGuiRender();
 		}
 
 		if (ImGui::CollapsingHeader("Polygon"))
 		{
-			pol->onImGuiRender();
+			polygon->onImGuiRender();
 		}
 		ImGui::End();
 		/*if (currentTest)
@@ -131,6 +143,8 @@ int main(void)
 	return 0;
 }
 
+
+// Call back souris
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && polygonCreation)
@@ -138,15 +152,29 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		double xpos, ypos;
 		//getting cursor position
 		glfwGetCursorPos(window, &xpos, &ypos);
-		pol->addPoint(xpos, ypos);
+		polygon->addPoint(xpos, ypos);
+		//std::cout << "Cursor Position at (" << xpos << " : " << ypos << ")" << std::endl;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && fenetreCreation)
+	{
+		double xpos, ypos;
+		//getting cursor position
+		glfwGetCursorPos(window, &xpos, &ypos);
+		fenetre->addPoint(xpos, ypos);
 		//std::cout << "Cursor Position at (" << xpos << " : " << ypos << ")" << std::endl;
 	}
 }
 
+
+// Callback clavier
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_E && action == GLFW_PRESS)
 		polygonCreation = true;
 	else if (key == GLFW_KEY_E && action == GLFW_RELEASE)
 		polygonCreation = false;
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
+		fenetreCreation = true;
+	else if (key == GLFW_KEY_F && action == GLFW_RELEASE)
+		fenetreCreation = false;
 }
