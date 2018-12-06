@@ -16,7 +16,7 @@ public:
 
 	void addPoint(float x, float y);
 	void onImGuiRender();
-	void onRender(glm::mat4 vp, Shader* shader);
+	void onRender(const glm::mat4& vp, Shader* shader);
 	void onUpdate();
 
 private:
