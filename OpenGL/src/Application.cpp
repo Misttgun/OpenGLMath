@@ -78,7 +78,7 @@ int main(void)
 	polygon = std::make_unique<Polygon>(1.0f, 0.0f, 0.0f);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+	glBindVertexArray(0);
 
 	// Initialisation de IMGUI
 	ImGui::CreateContext();
@@ -99,36 +99,20 @@ int main(void)
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
 		ImGui::Begin("Menu");
-		if (ImGui::CollapsingHeader("Instructions"))
-		{
-			ImGui::BulletText("E pour la creation du polygone.");
-			ImGui::BulletText("F pour la creation de la fenetre.");
-		}
-
-		//TODO Trouver une autre solution pour afficher les sections
-		if (ImGui::CollapsingHeader("Fenetre"))
-		{
-			fenetre->onImGuiRender();
-		}
-
-		if (ImGui::CollapsingHeader("Polygon"))
-		{
-			polygon->onImGuiRender();
-		}
+		ImGui::Text("Instructions:");
+		ImGui::BeginChild("Instructions", ImVec2(0, 50), true);
+		ImGui::BulletText("E pour la creation du polygone.");
+		ImGui::BulletText("F pour la creation de la fenetre.");
+		ImGui::EndChild();
+		ImGui::Text("Polygon:");
+		ImGui::BeginChild("Polygon", ImVec2(0, 150), true);
+		polygon->onImGuiRender();
+		ImGui::EndChild();
+		ImGui::Text("Fenetre:");
+		ImGui::BeginChild("Fenetre", ImVec2(0, 150), true);
+		fenetre->onImGuiRender();
+		ImGui::EndChild();
 		ImGui::End();
-		/*if (currentTest)
-		{
-			currentTest->OnUpdate(0.0f);
-			currentTest->OnRender();
-			ImGui::Begin("Test");
-			if (currentTest != testMenu && ImGui::Button("<-"))
-			{
-				delete currentTest;
-				currentTest = testMenu;
-			}
-			currentTest->OnImGuiRender();
-			ImGui::End();
-		}*/
 
 		ImGui::Render();
 		ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());
