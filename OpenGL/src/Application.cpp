@@ -24,6 +24,7 @@ const int WIDTH = 1024;
 const int HEIGHT = 768;
 std::unique_ptr<Polygon> polygon;
 std::unique_ptr<Polygon> fenetre;
+std::unique_ptr<Polygon> result;
 
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -76,6 +77,7 @@ int main(void)
 	// Initialisation de la fenetre et du polygon
 	fenetre = std::make_unique<Polygon>(0.0f, 0.0f, 1.0f);
 	polygon = std::make_unique<Polygon>(1.0f, 0.0f, 0.0f);
+    result = std::make_unique<Polygon>(0.0f, 1.0f, 0.0f);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -95,6 +97,8 @@ int main(void)
 
 		polygon->onRender(vp, shader.get());
 		fenetre->onRender(vp, shader.get());
+        result->sutherlandOgdmann(polygon, fenetre);
+        result->onRender(vp, shader.get());
 
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
@@ -113,6 +117,8 @@ int main(void)
 		fenetre->onImGuiRender();
 		ImGui::EndChild();
 		ImGui::End();
+
+
 
 		ImGui::Render();
 		ImGui_ImplGlfwGL3_RenderDrawData(ImGui::GetDrawData());

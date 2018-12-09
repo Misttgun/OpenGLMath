@@ -19,7 +19,14 @@ public:
 	void onRender(const glm::mat4& vp, Shader* shader);
 	void onUpdate();
 
+    void sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const std::unique_ptr<Polygon>& window);
+    
+
 private:
+
+    void line_intersection (float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float& xi, float& yi);
+    void clip(float x1, float y1, float x2, float y2);
+
 	std::unique_ptr<VertexArray> mVertexArray_;
 	std::unique_ptr<VertexBuffer> mVertexBuffer_;
 
