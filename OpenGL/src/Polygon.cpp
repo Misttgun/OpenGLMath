@@ -66,7 +66,13 @@ void Polygon::sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const s
 
     // - clone polygon points
     for (auto i = 0; i < polygon->mVertexSize_; ++i)
-        addPoint(polygon->mMousePoints_[i * 2], polygon->mMousePoints_[i * 2 + 1]);
+    {
+        // - compute translated coordinates of the polygon
+        glm::vec3 coor(polygon->mMousePoints_[i * 2], polygon->mMousePoints_[i * 2 + 1], 0.0f);
+        glm::vec3 res = polygon->mTranslation_ + coor;
+
+        addPoint(res.x, res.y);
+    }
 
     // - don't try to clip if the window is a line
     if (window->mVertexSize_ < 3)
@@ -77,10 +83,12 @@ void Polygon::sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const s
     {
         int j = (i + 1) % window->mVertexSize_;
 
-        float x1 = window->mMousePoints_[i * 2];
-        float y1 = window->mMousePoints_[i * 2 + 1];
-        float x2 = window->mMousePoints_[j * 2];
-        float y2 = window->mMousePoints_[j * 2 + 1];
+        glm::vec3 tr = window->mTranslation_;
+
+        float x1 = window->mMousePoints_[i * 2] + tr.x;
+        float y1 = window->mMousePoints_[i * 2 + 1] + tr.y;
+        float x2 = window->mMousePoints_[j * 2] + tr.x;
+        float y2 = window->mMousePoints_[j * 2 + 1] + tr.y;
 
         clip(x1, y1, x2, y2);
     }
