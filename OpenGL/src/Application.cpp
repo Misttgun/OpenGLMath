@@ -22,8 +22,10 @@ bool fenetreCreation;
 glm::mat4 proj, view;
 const int WIDTH = 1024;
 const int HEIGHT = 768;
+
 std::unique_ptr<Polygon> polygon;
 std::unique_ptr<Polygon> fenetre;
+std::unique_ptr<Polygon> box;
 std::unique_ptr<Polygon> result;
 
 
@@ -77,7 +79,9 @@ int main(void)
 	// Initialisation de la fenetre et du polygon
 	fenetre = std::make_unique<Polygon>(0.0f, 0.0f, 1.0f);
 	polygon = std::make_unique<Polygon>(1.0f, 0.0f, 0.0f);
+    box = std::make_unique<Polygon>(1.0f, 1.0f, 0.0f);
     result = std::make_unique<Polygon>(0.0f, 1.0f, 0.0f);
+
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -97,8 +101,11 @@ int main(void)
 
 		polygon->onRender(vp, shader.get());
 		fenetre->onRender(vp, shader.get());
+        box->onRender(vp, shader.get());
         result->sutherlandOgdmann(polygon, fenetre);
         result->onRender(vp, shader.get());
+        result->computeBoundingBox(box);
+        result->fill();
 
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();

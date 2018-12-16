@@ -6,7 +6,15 @@
 #include "VertexBuffer.h"
 #include "VertexArray.h"
 #include "Shader.h"
+#include "Edge.h"
 
+struct Bucket
+{
+    float y_max;
+    float current_x;
+    float inv_dir;
+    Bucket* next;
+};
 
 class Polygon
 {
@@ -20,17 +28,22 @@ public:
 	void onUpdate();
 
     void sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const std::unique_ptr<Polygon>& window);
-    
+    void computeBoundingBox(std::unique_ptr<Polygon>& polygon);
+    void fill();
 
 private:
 
     void line_intersection (float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float& xi, float& yi);
     void clip(float x1, float y1, float x2, float y2);
 
+    float minY_;
+    float maxY_;
+
 	std::unique_ptr<VertexArray> mVertexArray_;
 	std::unique_ptr<VertexBuffer> mVertexBuffer_;
 
 	std::vector<float> mMousePoints_;
+    std::vector<std::unique_ptr<Edge>> mEdges_;
 	int mVertexSize_;
 
 	float mColor_[4];

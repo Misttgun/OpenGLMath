@@ -6,6 +6,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include <iostream>
+#include <algorithm>
 
 Polygon::Polygon(float r, float g, float b)
 	:mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0)
@@ -23,7 +24,20 @@ void Polygon::addPoint(float x, float y)
 	mMousePoints_.push_back(y);
 
 	mVertexSize_ = mMousePoints_.size() / 2;
-	onUpdate();
+
+    // - clear and recreate edges
+    mEdges_.clear();
+    for (int i = 0; i < mVertexSize_; i++)
+	{
+        int next = (i + 1) % mVertexSize_;
+
+        mEdges_.push_back(std::make_unique<Edge>(mMousePoints_[i], mMousePoints_[i + 1], mMousePoints_[next], mMousePoints_[next + 1]));
+	}
+
+    // - sort edges by y_min
+    std::sort(mEdges_.begin(), mEdges_.end(), [](const std::unique_ptr<Edge>& lhs, const std::unique_ptr<Edge>& rhs) { return lhs->minY() < rhs->minY();  });
+	
+    onUpdate();
 }
 
 void Polygon::onImGuiRender()
@@ -173,4 +187,151 @@ void Polygon::clip(float x1, float y1, float x2, float y2)
 
     for (auto i = 0; i < new_size; ++i)
         addPoint(new_points[i * 2], new_points[i * 2 + 1]);
+}
+
+void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
+{
+    // - clear previous vertices
+    polygon->mVertexSize_ = 0;
+    polygon->mMousePoints_.clear();
+
+    // - return if the polygon is not created yet
+    if (mVertexSize_ < 3)
+        return;
+
+    int i = 0;
+
+    float x_min, y_min, x_max, y_max;
+
+    for (auto point : mMousePoints_)
+    {
+        // - init x
+        if (i == 0)
+        {
+            x_min = point;
+            x_max = point;
+        }
+
+        // - init y
+        else if (i == 1)
+        {
+            y_min = point;
+            y_max = point;
+        }
+
+        // - update values
+        else
+        {
+            // - update x
+            if (i % 2 == 0)
+            {
+                if (point > x_max)
+                    x_max = point;
+
+                if (point < x_min)
+                    x_min = point;
+            }
+
+            // - update y
+            else
+            {
+                if (point > y_max)
+                    y_max = point;
+
+                if (point < y_min)
+                    y_min = point;
+            }
+        }
+
+        i++;
+    }
+
+    // - fill the bounding box anti clockwise
+    polygon->addPoint(x_min, y_min);
+    polygon->addPoint(x_min, y_max);
+    polygon->addPoint(x_max, y_max);
+    polygon->addPoint(x_max, y_min);
+
+    minY_ = y_min;
+    maxY_ = y_max;
+}
+
+// the function is still in developpment and a bit dirty, 
+// it will be subdivided in smaller method later
+void Polygon::fill()
+{
+    // - create SI structure
+    std::vector<Bucket*> si;
+
+    for (int i = minY_; i <= maxY_; i++)
+    {
+        bool change = false;
+        bool first = true;
+
+        // - first iteration : will the list change ?
+        for (auto&& edge : mEdges_)
+        {
+            if (static_cast<int>(edge->minY()) == i || static_cast<int>(edge->maxY()) == i)
+            {
+                change = true;
+                break;
+            }
+        }
+
+        // - if there is no new edge in the list, move to next line
+        if (!change)
+            continue;
+
+        // - we add or remove a segment from the list
+        for (auto&& edge : mEdges_)
+        {
+            // - edge is not intercepted by current line
+            if (edge->minY() > i || edge->maxY() < i)
+                continue;
+
+            // - create a new bucket for the edge
+            Bucket* b = new Bucket;
+            b->y_max = edge->maxY();
+            b->current_x = edge->minX();
+            b->inv_dir = edge->getInvDir();
+            b->next = nullptr;
+
+            // - we add the first edge in the new entry
+            if (first)
+            {
+                si.push_back(b);
+                first = false;
+            }
+
+            else
+            {
+                si.back()->next = b;
+            }
+        }
+    }
+
+    // USE THE SI AS AN INPUT FOR THE LCA ALGORITHM
+
+    // print && clear the SI
+    int i = 0;
+    for (auto s : si)
+    {
+        std::cout << i << " : ";
+        // delete buckets
+        Bucket* tmp = s;
+        Bucket* next = s->next;
+
+        while (tmp != nullptr)
+        {
+            std::cout << "y_max : " << tmp->y_max << " - ";
+            delete tmp;
+            tmp = next;
+
+            if (next)
+                next = next->next;
+        }
+        i++;
+        std::cout << std::endl;
+    }
+
 }
