@@ -74,6 +74,19 @@ void Polygon::onRender(const glm::mat4& vp, Shader* shader)
 	renderer.draw(*mVertexArray_, mVertexSize_, *shader);
 }
 
+void Polygon::onRenderFill(const glm::mat4& vp, Shader* shader)
+{
+    Renderer renderer;
+
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), mTranslation_);
+    glm::mat4 mvp = vp * model;
+    shader->bind();
+    shader->setUniformMat4F("u_MVP", mvp);
+    shader->setUniform4F("u_Color", mColor_[0], mColor_[1], mColor_[2], mColor_[3]);
+    fill_LCA();
+    renderer.draw_line(*mVertexArray_, mVertexSize_, *shader);
+}
+
 void Polygon::onUpdate()
 {
 	mVertexBuffer_->edit(mMousePoints_.data(), mMousePoints_.size() * sizeof(float));
@@ -263,255 +276,143 @@ void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
     maxY_ = ceil(y_max);
 }
 
-// the function is still in developpment and a bit dirty, 
-// it will be subdivided in smaller method later
-void Polygon::fill(Shader* shader)
+void Polygon::fill_LCA()
 {
-    Renderer renderer;
+    std::cout << mEdges_.size();
 
-    auto vertexArray = std::make_unique<VertexArray>();
-    auto vertexBuffer = std::make_unique<VertexBuffer>(nullptr, 0);
-    VertexBufferLayout layout;
-    layout.push<float>(2);
-    vertexArray->addBuffer(*vertexBuffer, layout);
-
+    // - on ne peut pas remplir un point ou une ligne
     if (mEdges_.size() < 3)
         return;
 
-    // - create SI structure
-    std::vector<Bucket*> si;
-
-    for (int i = minY_; i <= maxY_; i++)
-    {
-        bool change = false;
-        bool first = true;
-
-        // - first iteration : will the list change ?
-        for (auto&& edge : mEdges_)
-        {
-            if (static_cast<int>(edge->minY()) == i )
-            {
-                change = true;
-                break;
-            }
-        }
-
-        // - if there is no new edge in the list, move to next line
-        if (!change)
-            continue;
-
-
-        // - we add or remove a segment from the list
-        for (auto&& edge : mEdges_)
-        {
-            
-            // - edge is not intercepted by current line
-            if (edge->minY() > i || edge->maxY() <= i)
-                continue;
-
-            // - create a new bucket for the edge
-            Bucket* b = new Bucket;
-            b->y_min = edge->minY();
-            b->y_max = edge->maxY();
-            b->current_x = edge->y1_ <= edge->y2_ ? edge->x1_ : edge->x2_;
-            b->inv_dir = edge->getInvDir();
-            b->next = nullptr;
-
-            // - we add the first edge in the new entry
-            if (first)
-            {
-                si.push_back(b);
-                first = false;
-            }
-
-            else
-            {
-                si.back()->next = b;
-            }
-        }
-    }
-
-    // USE THE SI AS AN INPUT FOR THE LCA ALGORITHM
-    Bucket* LCA = nullptr;
-    Bucket* tmp = nullptr;
-    Bucket* next = nullptr;
-    int si_index = 0;
+    EdgeTable edge_table;
+    EdgeTable active_edge_table;
+    EdgeTable garbage;
     std::vector<float> lines;
+    int y = minY_;
 
-    for (int i = minY_; i < maxY_; i++)
+    fill_edge_table(edge_table);
+    sort_edge_table(edge_table);
+
+    do
     {
-        bool change = false;
+        update_active_edge(edge_table, active_edge_table, garbage, y);
+        sort_active_edge_table(active_edge_table);
+        compute_line_coordinates(active_edge_table, lines, y);
+        update_x_bucket(active_edge_table);
+        y++;
+    } while ((!edge_table.empty() || !active_edge_table.empty()));
 
-        // - first iteration : will the list change ?
-        for (auto&& edge : mEdges_)
-        {
-            if (static_cast<int>(edge->minY()) == i)
-            {
-                change = true;
-                break;
-            }
-        }
+    mVertexBuffer_->edit(lines.data(), lines.size() * sizeof(float));
+    mVertexSize_ = lines.size() / 2;
 
-        // go to the next entry of the SI
-        if (change && si_index < si.size())
-        {
-            LCA = si[si_index];
-            si_index++;
-        }
+    clean_edge_table(garbage);
+}
 
-        // - create line from the current entry
-        tmp = LCA;
-        next = LCA->next;
-        
-        while (tmp != nullptr && next != nullptr)
-        {
-            lines.push_back(float((tmp->current_x) + (float(tmp->inv_dir) * (i - float(tmp->y_min)))));
-            lines.push_back(static_cast<float>(i));
-            lines.push_back(float(next->current_x) + (float(next->inv_dir) * (i - float(next->y_min))));
-            lines.push_back(i);
-            
-            tmp = next;
-            next = tmp->next;
-        }
+void Polygon::fill_edge_table(EdgeTable& et)
+{
+    // - on va créer un bucket par côté du polygone
+    for (auto&& edge : mEdges_)
+    {
+        auto* bucket = new Bucket;
+        bucket->y_min = edge->minY();
+        bucket->y_max = edge->maxY();
+        bucket->current_x = edge->y1_ < edge->y2_ ? edge->x1_ : edge->x2_;
+        bucket->inv_dir = edge->getInvDir();
+
+        et.push_back(bucket);
     }
-    vertexBuffer->edit(lines.data(), lines.size() * sizeof(float));
-    renderer.draw_line(*vertexArray, lines.size() * 4, *shader);
+}
 
-    // print && clear the SI
-    int i = 0;
-    for (auto s : si)
+void Polygon::update_active_edge(EdgeTable& et, EdgeTable& aet, EdgeTable& garbage, const int y) const
+{
+    // - on ajoute les côtés nouvellement intercepté dans la liste
+    // des côtés actifs
+    auto insert = std::begin(et);
+    while (insert != std::end(et))
     {
-        // delete buckets
-        Bucket* tmp = s;
-        Bucket* next = s->next;
-
-        while (tmp != nullptr)
+        if ((*insert)->y_min == y)
         {
-            delete tmp;
-            tmp = next;
+            aet.push_back((*insert));
+            insert = et.erase(insert);
+        }
 
-            if (next)
-                next = next->next;
+        else
+            ++insert;
+    }
+
+    // - on déplace les côtés qui ne sont plus actifs dans un container
+    // trash
+    auto remove = std::begin(aet);
+    while (remove != std::end(aet))
+    {
+        if ((*remove)->y_max == y)
+        {
+            garbage.push_back((*remove));
+            remove = aet.erase(remove);
+        }
+
+        else
+            ++remove;
+    }
+}
+
+void Polygon::sort_edge_table(EdgeTable& et) const
+{
+    // - trié selon l'ordre de priorité suivant : y_min > current_x > inv_dir
+    std::sort(et.begin(), et.end(), [](Bucket* lhs, Bucket* rhs)
+    {
+        if (lhs->y_min == rhs->y_min)
+        {
+            if (lhs->current_x == rhs->current_x)
+                return lhs->inv_dir < rhs->inv_dir;
+
+            return lhs->current_x < rhs->current_x;
+        }
+
+        return lhs->y_min < rhs->y_min;
+    });
+}
+
+void Polygon::sort_active_edge_table(EdgeTable& aet) const
+{
+    // - trié selon l'ordre de priorité suivant : y_min > current_x > inv_dir
+    std::sort(aet.begin(), aet.end(), [](Bucket* lhs, Bucket* rhs)
+    {
+        return lhs->current_x < rhs->current_x;
+    });
+}
+
+void Polygon::compute_line_coordinates(EdgeTable& aet, std::vector<float>& lines, const int y) const
+{
+    int i = 0;
+    int second_last_index = aet.size() - 1;
+
+    for (auto it = aet.begin(); it != aet.end(); ++it)
+    {
+        auto next = std::next(it, 1);
+
+        // - on ajoute les lignes entre les côtés d'index pair et impair adjacents
+        if (i < second_last_index && (i % 2 == 0))
+        {
+            lines.push_back(float(ceil((*it)->current_x)));
+            lines.push_back(float(y));
+            lines.push_back(float(floor((*next)->current_x)));
+            lines.push_back(float(y));
         }
         i++;
     }
 }
 
-void Polygon::fill_LCA(Shader* shader)
+void Polygon::update_x_bucket(EdgeTable& aet) const
 {
-    Renderer renderer;
+    for (auto edge : aet)
+        edge->current_x += edge->inv_dir;
+}
 
-    auto vertexArray = std::make_unique<VertexArray>();
-    auto vertexBuffer = std::make_unique<VertexBuffer>(nullptr, 0);
-    VertexBufferLayout layout;
-    layout.push<float>(2);
-    vertexArray->addBuffer(*vertexBuffer, layout);
-
-    if (mEdges_.size() < 3)
-        return;
-
-    // - création de l'edge table
-    std::vector<Bucket*> edge_table;
-
-    for (auto&& edge: mEdges_)
-    {
-        Bucket* bucket = new Bucket;
-        bucket->y_min = edge->minY();
-        bucket->y_max = edge->maxY();
-        bucket->current_x = edge->y1_ < edge->y2_ ? edge->x1_ : edge->x2_;
-        bucket->inv_dir = edge->getInvDir();
-        bucket->next = nullptr;
-
-        edge_table.push_back(bucket);
-    }
-
-    // - create de l'active edge table
-    std::vector<Bucket*> active_edge_table;
-
-    // - tri de l'edge table en fonction de y_min, x_min et w
-    std::sort(edge_table.begin(), edge_table.end(), [](Bucket* lhs, Bucket* rhs)
-    {
-        if (lhs->y_min == rhs->y_min)
-        {
-          if (lhs->current_x == rhs->current_x)
-              return lhs->inv_dir < rhs->inv_dir;
-
-          return lhs->current_x < rhs->current_x;
-        }
-
-        return lhs->y_min < rhs->y_min;
-    });
-
-    // - set start y
-    int y = minY_;
-
-    std::vector<Bucket*> garbage;
-    std::vector<float> lines;
-
-    do
-    {
-        // - insert new edge in active edge list
-        auto insert = std::begin(edge_table);
-        while (insert != std::end(edge_table)) 
-        {
-            if ((*insert)->y_min == y)
-            {
-                active_edge_table.push_back((*insert));
-                insert = edge_table.erase(insert);
-            }
-
-            else
-                ++insert;
-        }
-
-        // - remove "terminated" edge from active edge list
-        auto remove = std::begin(active_edge_table);
-        while (remove != std::end(active_edge_table))
-        {
-            if ((*remove)->y_max == y)
-            {
-                garbage.push_back((*remove));
-                remove = active_edge_table.erase(remove);
-            }
-
-            else
-                ++remove;
-        }
-
-        // - sort active edge table by x (may be not necessary)
-        std::sort(active_edge_table.begin(), active_edge_table.end(), [](Bucket* lhs, Bucket* rhs)
-        {
-            return lhs->current_x < rhs->current_x;
-        });
-
-        // - add lines
-        int i = 0;
-        for (auto it = active_edge_table.begin(); it != active_edge_table.end(); it++)
-        {
-            auto next = std::next(it, 1);
-            if (i < active_edge_table.size() - 1 && (i % 2 == 0))
-            {
-                lines.push_back(float(ceil((*it)->current_x)));
-                lines.push_back(float(y));
-                lines.push_back(float(floor((*next)->current_x)));
-                lines.push_back(float(y));
-            }
-
-            i++;
-        }
-
-        y++;
-
-        for (auto edge: active_edge_table)
-            edge->current_x += edge->inv_dir;
-        
-    } while ((!edge_table.empty() || !active_edge_table.empty()));
-
-    // draw lines
-    vertexBuffer->edit(lines.data(), lines.size() * sizeof(float));
-    renderer.draw_line(*vertexArray, lines.size() * 4, *shader);
-
-    // - clean garbage
-    for (auto edge : garbage)
+void Polygon::clean_edge_table(EdgeTable& et) const
+{
+    // - détruit les buckets créés pour la frame actuelle
+    for (auto edge : et)
         delete edge;
 }
+

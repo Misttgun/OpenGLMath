@@ -104,9 +104,8 @@ int main(void)
         
         result->sutherlandOgdmann(polygon, fenetre);
         result->computeBoundingBox(box);
-        box->onRender(vp, shader.get());
-        result->onRender(vp, shader.get());
-        result->fill_LCA(shader.get());
+        //box->onRender(vp, shader.get());
+        result->onRenderFill(vp, shader.get());
 
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
