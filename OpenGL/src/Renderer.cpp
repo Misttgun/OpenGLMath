@@ -44,3 +44,11 @@ void Renderer::draw(const VertexArray& va, const unsigned int count, const Shade
 	va.bind();
 	GL_CALL(glDrawArrays(GL_LINE_LOOP, 0, count));
 }
+
+
+void Renderer::draw_line(const VertexArray& va, const unsigned int count, const Shader& shader) const
+{
+    shader.bind();
+    va.bind();
+    GL_CALL(glDrawArrays(GL_LINES, 0, count));
+}

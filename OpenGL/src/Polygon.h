@@ -10,6 +10,7 @@
 
 struct Bucket
 {
+    float y_min;
     float y_max;
     float current_x;
     float inv_dir;
@@ -29,7 +30,8 @@ public:
 
     void sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const std::unique_ptr<Polygon>& window);
     void computeBoundingBox(std::unique_ptr<Polygon>& polygon);
-    void fill();
+    void fill(Shader* shader);
+    void fill_LCA(Shader* shader);
 
 private:
 

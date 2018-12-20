@@ -16,4 +16,5 @@ class Renderer
 public:
 	void clear() const;
 	void draw(const VertexArray& va, unsigned int count, const Shader& shader) const;
+    void draw_line(const VertexArray& va, const unsigned int count, const Shader& shader) const;
 };
