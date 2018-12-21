@@ -96,6 +96,7 @@ void Polygon::sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const s
 {
     // - reset current points
     mMousePoints_.clear();
+    mEdges_.clear();
     mVertexSize_ = 0;
 
     // - clone polygon points
@@ -110,8 +111,9 @@ void Polygon::sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const s
 
     // - don't try to clip if the window is a line
     if (window->mVertexSize_ < 3)
+    {
         return;
-
+    }
     // - sutherland-hodgman algorithm
     for (auto i = 0; i < window->mVertexSize_; ++i)
     {
@@ -179,10 +181,10 @@ void Polygon::clip(float x1, float y1, float x2, float y2)
             // - add intersection point and j to the new vertices list
             line_intersection(x1, y1, x2, y2, xi, yi, xj, yj, x_inter, y_inter);
 
-            new_points.push_back(floor(x_inter));
-            new_points.push_back(floor(y_inter));
-            new_points.push_back(floor(xj));
-            new_points.push_back(floor(yj));
+            new_points.push_back(x_inter);
+            new_points.push_back(y_inter);
+            new_points.push_back(xj);
+            new_points.push_back(yj);
 
             new_size += 2;
         }
@@ -193,8 +195,8 @@ void Polygon::clip(float x1, float y1, float x2, float y2)
             // - add intersection point to the new vertices list
             line_intersection(x1, y1, x2, y2, xi, yi, xj, yj, x_inter, y_inter);
 
-            new_points.push_back(floor(x_inter));
-            new_points.push_back(floor(y_inter));
+            new_points.push_back(x_inter);
+            new_points.push_back(y_inter);
             new_size++;
         }
 
@@ -202,11 +204,12 @@ void Polygon::clip(float x1, float y1, float x2, float y2)
     }
 
     // - clear current points and clone result
+    mEdges_.clear();
     mMousePoints_.clear();
     mVertexSize_ = 0;
 
     for (auto i = 0; i < new_size; ++i)
-        addPoint(new_points[i * 2], new_points[i * 2 + 1]);
+        addPoint(floor(new_points[i * 2]), floor(new_points[i * 2 + 1]));
 }
 
 void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
@@ -271,18 +274,19 @@ void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
     polygon->addPoint(x_min, y_max);
     polygon->addPoint(x_max, y_max);
     polygon->addPoint(x_max, y_min);
-
-    minY_ = floor(y_min);
-    maxY_ = ceil(y_max);
 }
 
 void Polygon::fill_LCA()
 {
-    std::cout << mEdges_.size();
-
     // - on ne peut pas remplir un point ou une ligne
     if (mEdges_.size() < 3)
         return;
+
+    for (auto&& edge : mEdges_)
+    {
+        minY_ = std::min(minY_, edge->minY());
+        maxY_ = std::max(maxY_, edge->maxY());
+    }
 
     EdgeTable edge_table;
     EdgeTable active_edge_table;
@@ -375,7 +379,6 @@ void Polygon::sort_edge_table(EdgeTable& et) const
 
 void Polygon::sort_active_edge_table(EdgeTable& aet) const
 {
-    // - trié selon l'ordre de priorité suivant : y_min > current_x > inv_dir
     std::sort(aet.begin(), aet.end(), [](Bucket* lhs, Bucket* rhs)
     {
         return lhs->current_x < rhs->current_x;
