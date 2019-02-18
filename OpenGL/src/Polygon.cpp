@@ -48,6 +48,17 @@ void Polygon::addPoint(float x, float y)
     onUpdate();
 }
 
+Polygon::Polygon(Polygon&& p) : mVertexArray_(std::move(p.mVertexArray_)),
+    mVertexBuffer_(std::move(p.mVertexBuffer_)), mVertexSize_(p.mVertexSize_), mTranslation_(p.mTranslation_)
+    
+{
+    for (int i = 0; i < p.mEdges_.size(); i++)
+        mEdges_.push_back(std::move(p.mEdges_[i]));
+
+    for (int i = 0; i < 4; i++)
+        mColor_[i] = p.mColor_[i];
+}
+
 void Polygon::onImGuiRender()
 {
 	ImGui::SliderFloat("TranslationX", &mTranslation_.x, 0.0f, 640.0f);
@@ -92,7 +103,7 @@ void Polygon::onUpdate()
 	mVertexBuffer_->edit(mMousePoints_.data(), mMousePoints_.size() * sizeof(float));
 }
 
-void Polygon::sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const std::unique_ptr<Polygon>& window)
+void Polygon::sutherlandOgdmann(const std::shared_ptr<Polygon>& polygon, const std::shared_ptr<Polygon>& window)
 {
     // - reset current points
     mMousePoints_.clear();
@@ -212,7 +223,7 @@ void Polygon::clip(float x1, float y1, float x2, float y2)
         addPoint(floor(new_points[i * 2]), floor(new_points[i * 2 + 1]));
 }
 
-void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
+void Polygon::computeBoundingBox(std::shared_ptr<Polygon>& polygon)
 {
     // - clear previous vertices
     polygon->mVertexSize_ = 0;
@@ -268,6 +279,8 @@ void Polygon::computeBoundingBox(std::unique_ptr<Polygon>& polygon)
 
         i++;
     }
+
+    minY_ = y_min;
 
     // - fill the bounding box anti clockwise
     polygon->addPoint(x_min, y_min);

@@ -81,6 +81,9 @@
     <ClCompile Include="src\Edge.cpp">
       <Filter>Source Files\maths</Filter>
     </ClCompile>
+    <ClCompile Include="src\PolygonManager.cpp">
+      <Filter>Source Files\opengl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\Basic.shader" />
@@ -897,6 +900,9 @@
       <Filter>Header Files\opengl</Filter>
     </ClInclude>
     <ClInclude Include="src\Edge.h">
+      <Filter>Header Files\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PolygonManager.h">
       <Filter>Header Files\maths</Filter>
     </ClInclude>
   </ItemGroup>

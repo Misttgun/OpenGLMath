@@ -5,7 +5,7 @@
 #include <string>
 
 #include "Renderer.h"
-#include "Polygon.h"
+#include "PolygonManager.h"
 
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/glm.hpp"
@@ -99,14 +99,11 @@ int main(void)
 		GL_CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 		renderer.clear();
 
-		polygon->onRender(vp, shader.get());
-		fenetre->onRender(vp, shader.get());
+        PolygonManager::get()->sutherland_ogdmann();
+        PolygonManager::get()->on_render(vp, shader.get());
+        PolygonManager::get()->compute_bounding_box();
+        PolygonManager::get()->on_render_fill(vp, shader.get());
         
-        result->sutherlandOgdmann(polygon, fenetre);
-        result->computeBoundingBox(box);
-        //box->onRender(vp, shader.get());
-        result->onRenderFill(vp, shader.get());
-
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
 		ImGui::Begin("Menu");
@@ -124,7 +121,6 @@ int main(void)
 		fenetre->onImGuiRender();
 		ImGui::EndChild();
 		ImGui::End();
-
 
 
 		ImGui::Render();
@@ -147,18 +143,14 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && polygonCreation)
 	{
 		double xpos, ypos;
-		//getting cursor position
 		glfwGetCursorPos(window, &xpos, &ypos);
-		polygon->addPoint(xpos, ypos);
-		//std::cout << "Cursor Position at (" << xpos << " : " << ypos << ")" << std::endl;
+        PolygonManager::get()->get_current_polygon()->addPoint(xpos, ypos);
 	}
 	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && fenetreCreation)
 	{
 		double xpos, ypos;
-		//getting cursor position
 		glfwGetCursorPos(window, &xpos, &ypos);
-		fenetre->addPoint(xpos, ypos);
-		//std::cout << "Cursor Position at (" << xpos << " : " << ypos << ")" << std::endl;
+        PolygonManager::get()->get_current_window()->addPoint(xpos, ypos);
 	}
 }
 
@@ -166,12 +158,31 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 // Callback clavier
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (key == GLFW_KEY_E && action == GLFW_PRESS)
-		polygonCreation = true;
-	else if (key == GLFW_KEY_E && action == GLFW_RELEASE)
-		polygonCreation = false;
-	if (key == GLFW_KEY_F && action == GLFW_PRESS)
-		fenetreCreation = true;
-	else if (key == GLFW_KEY_F && action == GLFW_RELEASE)
-		fenetreCreation = false;
+    if (key == GLFW_KEY_E && action == GLFW_PRESS)
+    {
+        polygonCreation = true;
+        PolygonManager::get()->add_polygon();
+    }
+     
+    else if (key == GLFW_KEY_E && action == GLFW_RELEASE)
+    {
+        polygonCreation = false;
+
+        if (PolygonManager::get()->get_current_polygon()->size() < 3)
+            PolygonManager::get()->delete_current_polygon();
+    }
+	
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    {
+        fenetreCreation = true;
+        PolygonManager::get()->add_window();
+    }
+    
+    else if (key == GLFW_KEY_F && action == GLFW_RELEASE)
+    {
+        fenetreCreation = false;
+
+        if (PolygonManager::get()->get_current_window()->size() < 3)
+            PolygonManager::get()->delete_current_window();
+    }
 }

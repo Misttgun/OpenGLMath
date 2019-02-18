@@ -131,6 +131,7 @@
     <ClCompile Include="src\Edge.cpp" />
     <ClCompile Include="src\Polygon.cpp" />
     <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\PolygonManager.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\tests\Test.cpp" />
@@ -260,6 +261,7 @@
   <ItemGroup>
     <ClInclude Include="src\Edge.h" />
     <ClInclude Include="src\Polygon.h" />
+    <ClInclude Include="src\PolygonManager.h" />
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\tests\Test.h" />

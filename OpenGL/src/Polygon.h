@@ -22,15 +22,17 @@ class Polygon
 {
 public:
 	Polygon(float r = 1.0f, float g = 1.0f, float b = 1.0f);
-	~Polygon() = default;
+    Polygon(Polygon&& p);
+    ~Polygon() = default;
 
 	void addPoint(float x, float y);
 	void onImGuiRender();
 	void onRender(const glm::mat4& vp, Shader* shader);
     void onRenderFill(const glm::mat4& vp, Shader* shader);
 	void onUpdate();
-    void sutherlandOgdmann(const std::unique_ptr<Polygon>& polygon, const std::unique_ptr<Polygon>& window);
-    void computeBoundingBox(std::unique_ptr<Polygon>& polygon);
+    void sutherlandOgdmann(const std::shared_ptr<Polygon>& polygon, const std::shared_ptr<Polygon>& window);
+    void computeBoundingBox(std::shared_ptr<Polygon>& polygon);
+    int size() { return mVertexSize_; }
     
 private:
     void line_intersection (float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, float& xi, float& yi);
@@ -49,9 +51,9 @@ private:
 
 	std::unique_ptr<VertexArray> mVertexArray_;
 	std::unique_ptr<VertexBuffer> mVertexBuffer_;
+    std::vector<std::unique_ptr<Edge>> mEdges_;
 
 	std::vector<float> mMousePoints_;
-    std::vector<std::unique_ptr<Edge>> mEdges_;
 	int mVertexSize_;
 
 	float mColor_[4];
