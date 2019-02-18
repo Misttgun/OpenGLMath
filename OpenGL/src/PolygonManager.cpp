@@ -24,6 +24,18 @@ void PolygonManager::add_window()
     _current_window_index++;
 }
 
+void PolygonManager::on_im_gui_render_polygons()
+{
+    for (const auto& polygon : _polygons)
+        polygon->onImGuiRender();
+}
+
+void PolygonManager::on_im_gui_render_windows()
+{
+    for (const auto& window : _windows)
+        window->onImGuiRender();
+}
+
 std::shared_ptr<Polygon> PolygonManager::get_current_polygon()
 {
     if (_current_polygon_index == -1)

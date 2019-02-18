@@ -17,6 +17,8 @@ class PolygonManager
         std::shared_ptr<Polygon> get_current_polygon();
         std::shared_ptr<Polygon> get_current_result();
         std::shared_ptr<Polygon> get_current_window();
+        void on_im_gui_render_polygons();
+        void on_im_gui_render_windows();
         void on_render(const glm::mat4& vp, Shader* shader);
         void on_render_fill(const glm::mat4& vp, Shader* shader);
         void compute_bounding_box();

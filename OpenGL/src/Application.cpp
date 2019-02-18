@@ -23,12 +23,6 @@ glm::mat4 proj, view;
 const int WIDTH = 1024;
 const int HEIGHT = 768;
 
-std::unique_ptr<Polygon> polygon;
-std::unique_ptr<Polygon> fenetre;
-std::unique_ptr<Polygon> box;
-std::unique_ptr<Polygon> result;
-
-
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
@@ -76,13 +70,6 @@ int main(void)
 	shader->bind();
 	shader->setUniform4F("u_Color", 1.0f, 1.0f, 1.0f, 1.0f);
 
-	// Initialisation de la fenetre et du polygon
-	fenetre = std::make_unique<Polygon>(0.0f, 0.0f, 1.0f);
-	polygon = std::make_unique<Polygon>(1.0f, 0.0f, 0.0f);
-    box = std::make_unique<Polygon>(1.0f, 1.0f, 0.0f);
-    result = std::make_unique<Polygon>(0.0f, 1.0f, 0.0f);
-
-
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
@@ -114,11 +101,11 @@ int main(void)
 		ImGui::EndChild();
 		ImGui::Text("Polygon:");
 		ImGui::BeginChild("Polygon", ImVec2(0, 150), true);
-		polygon->onImGuiRender();
+        PolygonManager::get()->on_im_gui_render_polygons();
 		ImGui::EndChild();
 		ImGui::Text("Fenetre:");
 		ImGui::BeginChild("Fenetre", ImVec2(0, 150), true);
-		fenetre->onImGuiRender();
+        PolygonManager::get()->on_im_gui_render_windows();
 		ImGui::EndChild();
 		ImGui::End();
 
