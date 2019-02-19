@@ -4,3 +4,5 @@ bin/
 
 # Files
 *.user
+*.vcxproj
+*.filters

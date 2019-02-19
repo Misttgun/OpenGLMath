@@ -6,7 +6,11 @@
 #include "imgui/imgui.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "Vector.h"
 #include <algorithm>
+
+// to use M_PI
+const float M_PI = 3.14159265358979f;
 
 Polygon::Polygon(float r, float g, float b)
 	:mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0)
@@ -432,3 +436,55 @@ void Polygon::clean_edge_table(EdgeTable& et) const
         delete edge;
 }
 
+void Polygon::ear_clipping()
+{
+    // - init variables
+    std::vector<std::shared_ptr<Polygon>> triangulations;
+    std::list<std::shared_ptr<Vertex>> vertex, convex_list, reflex_list, ear_list;
+    init_ear_clipping(vertex, convex_list, reflex_list, ear_list);
+
+    // - iterate over created list
+
+}
+
+void Polygon::create_vertex_list(VertexList &list)
+{
+    for (int i = 0; i < mVertexSize_; i++)
+        list.push_back(std::make_shared<Vertex>(Vertex(mMousePoints_[2 * i], mMousePoints_[2 * i + 1])));
+}
+
+void Polygon::init_ear_clipping(VertexList& vertex_list, VertexList& convex_list, VertexList& reflex_list, VertexList& ear_list)
+{
+    // - store vertex as a list (seems to be more optimized for this algorithm)
+    create_vertex_list(vertex_list);
+
+    int i = 0;
+    const int last_index = vertex_list.size() - 1;
+
+    // set up convex and reflex list
+    for (auto it = vertex_list.begin(); it != vertex_list.end(); ++it) 
+    {
+        const auto prev = i == 0 ? *(--vertex_list.end()) : *(std::prev(it, 1));
+        const auto next = i == last_index ? *(vertex_list.begin()) : *(std::next(it, 1));
+
+        Vector v1(*it->get(), *prev);
+        Vector v2(*it->get(), *next);
+        v1.normalized();
+        v1.rotate_90();
+        v2.normalized();
+
+        if (v1.dot(v2) < 0)
+            reflex_list.push_back(*it);
+        else
+            convex_list.push_back(*it);
+
+        i++;
+    }
+
+    // setup ears
+
+    /*
+    std::cout << "REFLEX VERTEX COUNT : " << reflex_list.size() << std::endl;
+    std::cout << "CONVEX VERTEX COUNT : " << convex_list.size() << std::endl;
+    */
+}

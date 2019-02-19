@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <list>
 
 #include "VertexBuffer.h"
 #include "VertexArray.h"
@@ -16,7 +17,15 @@ struct Bucket
     float inv_dir;
 };
 
+struct Vertex
+{
+    Vertex(const float x_, const float y_) { x = x_;  y = y_;  }
+    float x;
+    float y;
+};
+
 using EdgeTable = std::vector<Bucket*>;
+using VertexList = std::list<std::shared_ptr<Vertex>>;
 
 class Polygon
 {
@@ -32,6 +41,7 @@ public:
 	void onUpdate();
     void sutherlandOgdmann(const std::shared_ptr<Polygon>& polygon, const std::shared_ptr<Polygon>& window);
     void computeBoundingBox(std::shared_ptr<Polygon>& polygon);
+    void ear_clipping();
     int size() { return mVertexSize_; }
     
 private:
@@ -45,6 +55,9 @@ private:
     void compute_line_coordinates(EdgeTable& aet, std::vector<float>& lines, const int y) const;
     void update_x_bucket(EdgeTable& aet) const;
     void clean_edge_table(EdgeTable& et) const;
+    void create_vertex_list(std::list<std::shared_ptr<Vertex>> &list);
+    void init_ear_clipping(VertexList& vertex_list, VertexList& convex_list, VertexList& reflex_list, VertexList& ears_list);
+
 
     float minY_;
     float maxY_;
