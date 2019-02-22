@@ -17,6 +17,7 @@ class PolygonManager
         std::shared_ptr<Polygon> get_current_polygon();
         std::shared_ptr<Polygon> get_current_result();
         std::shared_ptr<Polygon> get_current_window();
+        std::vector<std::shared_ptr<Polygon>>& get_triangles();
         void on_im_gui_render_polygons();
         void on_im_gui_render_windows();
         void on_render(const glm::mat4& vp, Shader* shader);
@@ -38,4 +39,5 @@ class PolygonManager
         std::vector<std::shared_ptr<Polygon>> _windows;
         std::vector<std::shared_ptr<Polygon>> _bounding_boxes;
         std::vector<std::shared_ptr<Polygon>> _results;
+        std::vector<std::shared_ptr<Polygon>> _windows_triangles;
 };

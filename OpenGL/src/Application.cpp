@@ -173,6 +173,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             PolygonManager::get()->delete_current_window();
 
         if (PolygonManager::get()->get_current_window())
-            PolygonManager::get()->get_current_window()->ear_clipping();
+            PolygonManager::get()->get_current_window()->ear_clipping(PolygonManager::get()->get_triangles());
     }
 }

@@ -25,7 +25,9 @@ struct Vertex
 };
 
 using EdgeTable = std::vector<Bucket*>;
-using VertexList = std::list<std::shared_ptr<Vertex>>;
+using VertexPtr = std::shared_ptr<Vertex>;
+using VertexList = std::list<VertexPtr>;
+using VertexListIterator = VertexList::iterator;
 
 class Polygon
 {
@@ -40,8 +42,18 @@ public:
     void onRenderFill(const glm::mat4& vp, Shader* shader);
 	void onUpdate();
     void sutherlandOgdmann(const std::shared_ptr<Polygon>& polygon, const std::shared_ptr<Polygon>& window);
+    
+    // EAR CLIPPING FUNCTIONS
+    bool is_ear(VertexListIterator& it, VertexList& vertex_list, VertexList& reflex_list);
+    bool is_in_list(VertexPtr& v, VertexList& vertex_list);
+    VertexListIterator get_in_list(VertexPtr& v, VertexList& vertex_list);
+    void update_vertex(VertexPtr& v, VertexList& vertex_list, VertexList& convex_list, VertexList& reflex_list, VertexList& ear_list);
+    bool is_reflex(const VertexPtr& v, const VertexPtr& prev, const VertexPtr& next);
+    void move_to_list(VertexPtr& v, VertexList& src, VertexList& dest);
+    void erase_from_list(VertexPtr& v, VertexList& vertex_list);
+    void ear_clipping(std::vector<std::shared_ptr<Polygon>>& vector);
+    
     void computeBoundingBox(std::shared_ptr<Polygon>& polygon);
-    void ear_clipping();
     int size() { return mVertexSize_; }
     
 private:

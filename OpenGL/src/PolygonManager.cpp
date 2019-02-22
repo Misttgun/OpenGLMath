@@ -60,19 +60,29 @@ std::shared_ptr<Polygon> PolygonManager::get_current_window()
     return _windows.at(_current_window_index);
 }
 
+std::vector<std::shared_ptr<Polygon>>& PolygonManager::get_triangles()
+{
+    return _windows_triangles;
+}
+
 void PolygonManager::on_render(const glm::mat4& vp, Shader* shader)
 {
     for (const auto& polygon : _polygons)
         polygon->onRender(vp, shader);
 
-    for (const auto& window : _windows)
-        window->onRender(vp, shader);
+    if (_windows_triangles.size() == 0)
+        for (const auto& window : _windows)
+            window->onRender(vp, shader);
+
+    else
+        for (const auto& triangle : _windows_triangles)
+            triangle->onRender(vp, shader);
 
     for (const auto& bounding_box : _bounding_boxes)
         bounding_box->onRender(vp, shader);
 
     for (const auto& result : _results)
-        result->onRender(vp, shader);
+            result->onRender(vp, shader);    
 }
 
 void PolygonManager::sutherland_ogdmann()

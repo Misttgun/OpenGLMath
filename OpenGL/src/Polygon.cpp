@@ -437,7 +437,10 @@ void Polygon::clean_edge_table(EdgeTable& et) const
         delete edge;
 }
 
-void Polygon::ear_clipping()
+
+
+
+void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
 {
     // - init variables
     std::vector<std::shared_ptr<Polygon>> triangulations;
@@ -445,7 +448,29 @@ void Polygon::ear_clipping()
     init_ear_clipping(vertex, convex_list, reflex_list, ear_list);
 
     // - iterate over created list
+    while (!ear_list.empty())
+    {
+        auto current_ear = ear_list.front();
+        ear_list.pop_front();
+        auto it = std::find(vertex.begin(), vertex.end(), current_ear);
 
+        // - get adjacent Vertex
+        auto prev = it == vertex.begin() ? --vertex.end() : std::prev(it, 1);
+        auto next = it == --vertex.end() ? vertex.begin() : std::next(it, 1);
+
+        // - add in polygon
+        vector.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.5f, 1.0f)));
+        vector.back()->addPoint((*prev)->x, (*prev)->y);
+        vector.back()->addPoint((*it)->x, (*it)->y);
+        vector.back()->addPoint((*next)->x, (*next)->y);
+
+        // update lists
+        erase_from_list(*it, vertex);
+
+        // start by next, because nea ear are add to front
+        update_vertex(*next, vertex, convex_list, reflex_list, ear_list);
+        update_vertex(*prev, vertex, convex_list, reflex_list, ear_list);
+    }
 }
 
 void Polygon::create_vertex_list(VertexList &list)
@@ -460,7 +485,7 @@ void Polygon::init_ear_clipping(VertexList& vertex_list, VertexList& convex_list
     create_vertex_list(vertex_list);
 
     int i = 0;
-    int last_index = vertex_list.size() - 1;
+    const int last_index = vertex_list.size() - 1;
 
     // set up convex and reflex list
     for (auto it = vertex_list.begin(); it != vertex_list.end(); ++it) 
@@ -468,52 +493,121 @@ void Polygon::init_ear_clipping(VertexList& vertex_list, VertexList& convex_list
         const auto prev = i == 0 ? *(--vertex_list.end()) : *(std::prev(it, 1));
         const auto next = i == last_index ? *(vertex_list.begin()) : *(std::next(it, 1));
 
-        Vector v1(*it->get(), *prev);
-        Vector v2(*it->get(), *next);
-        v1.normalized();
-        v1.rotate_90();
-        v2.normalized();
-
-        if (v1.dot(v2) < 0)
+        if (is_reflex(*it, prev, next))
             reflex_list.push_back(*it);
         else
+        {
             convex_list.push_back(*it);
-
+        }
         i++;
     }
 
     // setup ears
     i = 0;
-    last_index = convex_list.size() - 1;
-    for (auto it = convex_list.begin(); it != convex_list.end(); ++it)
+    for (auto it = vertex_list.begin(); it != vertex_list.end(); ++it)
     {
-        const auto prev = i == 0 ? *(--convex_list.end()) : *(std::prev(it, 1));
-        const auto next = i == last_index ? *(convex_list.begin()) : *(std::next(it, 1));
+        // - ignore reflex vertex 
+        if (is_in_list(*it, reflex_list))
+            continue;
 
-        bool has_reflex_inside = false;
-
-        for (const auto& vertex : reflex_list)
-        {
-            if ((vertex == prev) || (vertex == (*it)) || (vertex == next))
-                continue;
-
-
-            if (Utils::get()->in_triangle(Vector(*prev), Vector(*it->get()), Vector(*next), Vector(*vertex)))
-            {
-                has_reflex_inside = true;
-                break;
-            }
-            
-        }
-        
-        if (!has_reflex_inside)
-        {
+        if (is_ear(it, vertex_list, reflex_list))
             ear_list.push_back(*it);
-        }
-        i++;
+    }
+}
+
+bool Polygon::is_reflex(const VertexPtr& v, const VertexPtr& prev, const VertexPtr& next)
+{
+    Vector v1(*v, *prev);
+    Vector v2(*v, *next);
+
+    v1.normalized();
+    v1.rotate_90();
+    v2.normalized();
+
+    return (v1.dot(v2) < 0);
+}
+
+void Polygon::update_vertex(VertexPtr& v, VertexList& vertex_list, VertexList& convex_list, VertexList& reflex_list, VertexList& ear_list)
+{
+    // check if convex vertex was an ear
+    if (is_in_list(v, convex_list) && is_in_list(v, ear_list))
+    {
+        auto it = get_in_list(v, vertex_list);
+        
+        // vertex is no longer an ear
+        if (!is_ear(it, vertex_list, reflex_list))
+            erase_from_list(v, ear_list);
+
+        return;
     }
 
-    std::cout << "REFLEX VERTEX COUNT : " << reflex_list.size() << std::endl;
-    std::cout << "CONVEX VERTEX COUNT : " << convex_list.size() << std::endl;
-    std::cout << "EARS COUNT : " << ear_list.size() << std::endl;
+    // reflex vertex can become convex and become and ear
+    if (is_in_list(v, reflex_list))
+    {
+        auto it = get_in_list(v, vertex_list);
+        const auto prev = it == vertex_list.begin() ? *(--vertex_list.end()) : *(std::prev(it, 1));
+        const auto next = it == --vertex_list.end() ? *vertex_list.begin() : *(std::next(it, 1));
+
+        // still reflex, nothing change
+        if (is_reflex(v, prev, next))
+            return;
+
+
+        move_to_list(v, reflex_list, convex_list);
+
+        if (is_ear(it, vertex_list, reflex_list))
+            ear_list.push_front(v);
+    }
+}
+
+bool Polygon::is_ear(VertexListIterator& it, VertexList& vertex_list, VertexList& reflex_list)
+{
+    const auto prev = it == vertex_list.begin() ? *(--vertex_list.end()) : *(std::prev(it, 1));
+    const auto next = it == --vertex_list.end() ? *vertex_list.begin() : *(std::next(it, 1));
+
+    bool has_reflex_inside = false;
+
+    for (const auto& vertex : reflex_list)
+    {
+        // - ignore adjacent vertex
+        if ((vertex == prev) || (vertex == (*it)) || (vertex == next))
+            continue;
+
+        if (Utils::get()->in_triangle(Vector(*prev), Vector(*it->get()), Vector(*next), Vector(*vertex)))
+        {
+            has_reflex_inside = true;
+            break;
+        }
+    }
+    
+    return !has_reflex_inside;
+}
+
+bool Polygon::is_in_list(VertexPtr& v, VertexList& vertex_list)
+{
+    auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
+    
+    return it != vertex_list.end();
+}
+
+VertexListIterator Polygon::get_in_list(VertexPtr& v, VertexList& vertex_list)
+{
+    auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
+
+    return it;
+}
+
+void Polygon::erase_from_list(VertexPtr& v, VertexList& vertex_list)
+{
+    auto it = get_in_list(v, vertex_list);
+
+    vertex_list.erase(it);
+}
+
+void Polygon::move_to_list(VertexPtr& v, VertexList& src, VertexList& dest)
+{
+    auto it = get_in_list(v, src);
+
+    dest.push_front(v);
+    src.erase(it);
 }
