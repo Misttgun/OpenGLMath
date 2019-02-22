@@ -2,6 +2,7 @@
 #include "Polygon.h"
 #include "Renderer.h"
 #include "VertexBufferLayout.h"
+#include "Utils.h"
 
 #include "imgui/imgui.h"
 #include "glm/glm.hpp"
@@ -459,7 +460,7 @@ void Polygon::init_ear_clipping(VertexList& vertex_list, VertexList& convex_list
     create_vertex_list(vertex_list);
 
     int i = 0;
-    const int last_index = vertex_list.size() - 1;
+    int last_index = vertex_list.size() - 1;
 
     // set up convex and reflex list
     for (auto it = vertex_list.begin(); it != vertex_list.end(); ++it) 
@@ -482,9 +483,37 @@ void Polygon::init_ear_clipping(VertexList& vertex_list, VertexList& convex_list
     }
 
     // setup ears
+    i = 0;
+    last_index = convex_list.size() - 1;
+    for (auto it = convex_list.begin(); it != convex_list.end(); ++it)
+    {
+        const auto prev = i == 0 ? *(--convex_list.end()) : *(std::prev(it, 1));
+        const auto next = i == last_index ? *(convex_list.begin()) : *(std::next(it, 1));
 
-    /*
+        bool has_reflex_inside = false;
+
+        for (const auto& vertex : reflex_list)
+        {
+            if ((vertex == prev) || (vertex == (*it)) || (vertex == next))
+                continue;
+
+
+            if (Utils::get()->in_triangle(Vector(*prev), Vector(*it->get()), Vector(*next), Vector(*vertex)))
+            {
+                has_reflex_inside = true;
+                break;
+            }
+            
+        }
+        
+        if (!has_reflex_inside)
+        {
+            ear_list.push_back(*it);
+        }
+        i++;
+    }
+
     std::cout << "REFLEX VERTEX COUNT : " << reflex_list.size() << std::endl;
     std::cout << "CONVEX VERTEX COUNT : " << convex_list.size() << std::endl;
-    */
+    std::cout << "EARS COUNT : " << ear_list.size() << std::endl;
 }

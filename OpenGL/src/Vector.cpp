@@ -2,6 +2,17 @@
 
 #include "Vector.h"
 
+Vector::Vector(const Vertex& v)
+{
+    _x = v.x;
+    _y = v.y;
+}
+
+Vector::Vector(const float& x, const float &y)
+{
+    _x = x;
+    _y = y;
+}
 
 Vector::Vector(const Vertex &v1, const Vertex &v2)
 {
@@ -32,4 +43,9 @@ void Vector::normalized()
 float Vector::get_magnitude() const
 {
     return sqrt(_x*_x + _y * _y);
+}
+
+Vector Vector::operator- (const Vector& v) const
+{
+    return Vector(_x - v._x, _y - v._y);
 }
