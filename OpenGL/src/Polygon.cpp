@@ -14,80 +14,65 @@
 const float M_PI = 3.14159265358979f;
 
 Polygon::Polygon(float r, float g, float b)
-	:mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0)
+	:mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0), mEdges_()
 {
 	mVertexArray_ = std::make_unique<VertexArray>();
 	mVertexBuffer_ = std::make_unique<VertexBuffer>(nullptr, 0);
 	VertexBufferLayout layout;
 	layout.push<float>(2);
 	mVertexArray_->addBuffer(*mVertexBuffer_, layout);
+    minY_ = -1;
+    maxY_ = -1;
 }
 
-void Polygon::addPoint(float x, float y)
-{
-	mMousePoints_.push_back(x);
-	mMousePoints_.push_back(y);
+Polygon::Polygon(Polygon&& p) : mVertexArray_(std::move(p.mVertexArray_)), mEdges_(),
+mVertexBuffer_(std::move(p.mVertexBuffer_)), mVertexSize_(p.mVertexSize_), mTranslation_(p.mTranslation_)
 
-	mVertexSize_ = mMousePoints_.size() / 2;
-
-    // - clear and recreate edges (can be optimized : remove last entry and create 2 
-    // new edge : [last, current], [current, first]
-    mEdges_.clear();
-    for (int i = 0; i < mVertexSize_; i++)
-	{
-        int next = (i + 1) % mVertexSize_;
-
-        mEdges_.push_back(std::make_unique<Edge>(mMousePoints_[i * 2], mMousePoints_[i * 2 + 1], mMousePoints_[next * 2], mMousePoints_[next * 2 + 1]));
-	}
-
-    // - sort edges by y_min
-    
-    std::sort(mEdges_.begin(), mEdges_.end(), [](const std::unique_ptr<Edge>& lhs, const std::unique_ptr<Edge>& rhs)
-    {
-        if (lhs->minY() == rhs->minY())
-            return lhs->getInvDir() < rhs->getInvDir();
-
-        return lhs->minY() < rhs->minY();
-    });
-	
-    onUpdate();
-}
-
-Polygon::Polygon(Polygon&& p) : mVertexArray_(std::move(p.mVertexArray_)),
-    mVertexBuffer_(std::move(p.mVertexBuffer_)), mVertexSize_(p.mVertexSize_), mTranslation_(p.mTranslation_)
-    
 {
     for (int i = 0; i < p.mEdges_.size(); i++)
         mEdges_.push_back(std::move(p.mEdges_[i]));
 
     for (int i = 0; i < 4; i++)
         mColor_[i] = p.mColor_[i];
+
+    minY_ = p.minY_;
+    maxY_ = p.maxY_;
+}
+
+void Polygon::addPoint(float x, float y)
+{
+    mMousePoints_.push_back(x);
+    mMousePoints_.push_back(y);
+
+    mVertexSize_ = mMousePoints_.size() / 2;
+
+    update_edges();
 }
 
 void Polygon::onImGuiRender()
 {
-	ImGui::SliderFloat("TranslationX", &mTranslation_.x, 0.0f, 640.0f);
-	ImGui::SliderFloat("TranslationY", &mTranslation_.y, 0.0f, 640.0f);
-	ImGui::ColorEdit4("Color", mColor_);
-	if (ImGui::Button("Clear"))
-	{
-		mMousePoints_.clear();
-		mVertexSize_ = 0;
-		onUpdate();
-	}
-	//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::SliderFloat("TranslationX", &mTranslation_.x, 0.0f, 640.0f);
+    ImGui::SliderFloat("TranslationY", &mTranslation_.y, 0.0f, 640.0f);
+    ImGui::ColorEdit4("Color", mColor_);
+    
+    if (ImGui::Button("Clear"))
+    {
+        mMousePoints_.clear();
+        mVertexSize_ = 0;
+        onUpdate();
+    }
 }
 
 void Polygon::onRender(const glm::mat4& vp, Shader* shader)
 {
-	Renderer renderer;
+    Renderer renderer;
 
-	glm::mat4 model = glm::translate(glm::mat4(1.0f), mTranslation_);
-	glm::mat4 mvp = vp * model;
-	shader->bind();
-	shader->setUniformMat4F("u_MVP", mvp);
-	shader->setUniform4F("u_Color", mColor_[0], mColor_[1], mColor_[2], mColor_[3]);
-	renderer.draw(*mVertexArray_, mVertexSize_, *shader);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), mTranslation_);
+    glm::mat4 mvp = vp * model;
+    shader->bind();
+    shader->setUniformMat4F("u_MVP", mvp);
+    shader->setUniform4F("u_Color", mColor_[0], mColor_[1], mColor_[2], mColor_[3]);
+    renderer.draw(*mVertexArray_, mVertexSize_, *shader);
 }
 
 void Polygon::onRenderFill(const glm::mat4& vp, Shader* shader)
@@ -105,7 +90,7 @@ void Polygon::onRenderFill(const glm::mat4& vp, Shader* shader)
 
 void Polygon::onUpdate()
 {
-	mVertexBuffer_->edit(mMousePoints_.data(), mMousePoints_.size() * sizeof(float));
+    mVertexBuffer_->edit(mMousePoints_.data(), mMousePoints_.size() * sizeof(float));
 }
 
 void Polygon::sutherlandOgdmann(const std::shared_ptr<Polygon>& polygon, const std::shared_ptr<Polygon>& window)
@@ -444,15 +429,20 @@ void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
 {
     // - init variables
     std::vector<std::shared_ptr<Polygon>> triangulations;
-    std::list<std::shared_ptr<Vertex>> vertex, convex_list, reflex_list, ear_list;
+    VertexList vertex, convex_list, reflex_list, ear_list;
     init_ear_clipping(vertex, convex_list, reflex_list, ear_list);
 
+    if (vertex.size() == 3)
+        return;
+
     // - iterate over created list
-    while (!ear_list.empty())
+    while (!ear_list.empty() && vertex.size() > 1)
     {
-        auto current_ear = ear_list.front();
-        ear_list.pop_front();
-        auto it = std::find(vertex.begin(), vertex.end(), current_ear);
+        VertexPtr current_ear = ear_list.front();
+        VertexListIterator it = std::find(vertex.begin(), vertex.end(), current_ear);
+
+
+        std::cout << "VERTEX SIZE : " << vertex.size() << std::endl;
 
         // - get adjacent Vertex
         auto prev = it == vertex.begin() ? --vertex.end() : std::prev(it, 1);
@@ -463,8 +453,10 @@ void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
         vector.back()->addPoint((*prev)->x, (*prev)->y);
         vector.back()->addPoint((*it)->x, (*it)->y);
         vector.back()->addPoint((*next)->x, (*next)->y);
+        vector.back()->update_edges();
 
         // update lists
+        ear_list.pop_front();
         erase_from_list(*it, vertex);
 
         // start by next, because nea ear are add to front
@@ -585,29 +577,105 @@ bool Polygon::is_ear(VertexListIterator& it, VertexList& vertex_list, VertexList
 
 bool Polygon::is_in_list(VertexPtr& v, VertexList& vertex_list)
 {
-    auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
+    const auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
     
     return it != vertex_list.end();
 }
 
 VertexListIterator Polygon::get_in_list(VertexPtr& v, VertexList& vertex_list)
 {
-    auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
+    const auto it = std::find(vertex_list.begin(), vertex_list.end(), v);
 
     return it;
 }
 
 void Polygon::erase_from_list(VertexPtr& v, VertexList& vertex_list)
 {
-    auto it = get_in_list(v, vertex_list);
+    const auto it = get_in_list(v, vertex_list);
 
     vertex_list.erase(it);
 }
 
 void Polygon::move_to_list(VertexPtr& v, VertexList& src, VertexList& dest)
 {
-    auto it = get_in_list(v, src);
+    const auto it = get_in_list(v, src);
 
     dest.push_front(v);
     src.erase(it);
+}
+
+void Polygon::subdivise()
+{
+    const int size = mMousePoints_.size();
+    mMousePoints_.resize(2 * size, 0.f);
+    const int new_size = mMousePoints_.size();
+
+    // - make space for new values
+    for (int i = new_size - 3; i > 1; i-= 4)
+    {
+        mMousePoints_[i] = mMousePoints_[i / 2 + 1];
+        mMousePoints_[i - 1] = mMousePoints_[i / 2];
+    }
+
+    // - double add barycenter of current edges to the list of vertex
+    for (int i = 2; i < new_size - 1; i+= 4)
+    {
+        float x1, y1, x2, y2;
+        if (i != new_size - 2)
+        {
+            x1 = mMousePoints_[i - 2];
+            x2 = mMousePoints_[i + 2];
+            y1 = mMousePoints_[i - 1];
+            y2 = mMousePoints_[i + 3];
+        }
+
+        else
+        {
+            x1 = mMousePoints_[i - 2];
+            x2 = mMousePoints_[0];
+            y1 = mMousePoints_[i - 1];
+            y2 = mMousePoints_[1];
+        }
+
+        mMousePoints_[i] = (x1 + x2) / 2.0f;
+        mMousePoints_[i + 1] = (y1 + y2) / 2.0f;
+    }
+
+    std::vector<float> new_vertex(new_size);
+
+    for (int i = 0; i < new_size - 2; i++)
+        new_vertex[i] = (mMousePoints_[i] + mMousePoints_[i+2]) / 2.0f;
+
+    new_vertex[new_size - 2] = (mMousePoints_[new_size - 2] + mMousePoints_[0]) / 2.0f;
+    new_vertex[new_size - 1] = (mMousePoints_[new_size - 1] + mMousePoints_[1]) / 2.0f;
+
+    mVertexSize_ = mMousePoints_.size() / 2;
+    mMousePoints_ = new_vertex;
+
+    update_edges();
+}
+
+void Polygon::update_edges()
+{
+    // - clear and recreate edges (can be optimized : remove last entry and create 2 
+    // new edge : [last, current], [current, first]
+    mEdges_.clear();
+    for (int i = 0; i < mVertexSize_; i++)
+    {
+        int next = (i + 1) % mVertexSize_;
+
+        mEdges_.push_back(std::make_unique<Edge>(mMousePoints_[i * 2], mMousePoints_[i * 2 + 1], mMousePoints_[next * 2], mMousePoints_[next * 2 + 1]));
+    }
+
+    // - sort edges by y_min
+
+    std::sort(mEdges_.begin(), mEdges_.end(), [](const std::unique_ptr<Edge>& lhs, const std::unique_ptr<Edge>& rhs)
+    {
+        if (lhs->minY() == rhs->minY())
+            return lhs->getInvDir() < rhs->getInvDir();
+
+        return lhs->minY() < rhs->minY();
+    });
+
+    onUpdate();
 }

@@ -147,26 +147,38 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_E && action == GLFW_PRESS)
     {
+        std::cout << "PRESS E\n";
         polygonCreation = true;
         PolygonManager::get()->add_polygon();
     }
      
     else if (key == GLFW_KEY_E && action == GLFW_RELEASE)
     {
+        std::cout << "RELEASE E\n";
         polygonCreation = false;
 
-        if (PolygonManager::get()->get_current_polygon()->size() < 3)
-            PolygonManager::get()->delete_current_polygon();
+        std::cout << "BUT QHY ?\n";
+
+        if (PolygonManager::get()->get_current_polygon() != nullptr)
+            
+
+        if (PolygonManager::get()->get_current_polygon() != nullptr)
+            if (PolygonManager::get()->get_current_polygon()->size() < 3)
+                PolygonManager::get()->delete_current_polygon();
+
+        std::cout << "DIE ?\n";
     }
 	
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
     {
+        std::cout << "PRESS F\n";
         fenetreCreation = true;
         PolygonManager::get()->add_window();
     }
     
     else if (key == GLFW_KEY_F && action == GLFW_RELEASE)
     {
+        std::cout << "RELEASE F\n";
         fenetreCreation = false;
 
         if (PolygonManager::get()->get_current_window()->size() < 3)
@@ -174,5 +186,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
         if (PolygonManager::get()->get_current_window())
             PolygonManager::get()->get_current_window()->ear_clipping(PolygonManager::get()->get_triangles());
+    }
+
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+    {
+        if (PolygonManager::get()->get_current_polygon() != nullptr)
+            PolygonManager::get()->get_current_polygon()->subdivise();
     }
 }

@@ -12,7 +12,11 @@ class Vector
         void rotate_90();
         void normalized();
         float get_magnitude() const;
-        Vector operator- (const Vector& v1) const;
+        Vector operator- (const Vector& v) const;
+        Vector operator+ (const Vector& v) const;
+        Vector operator* (const float s) const;
+        float x() const { return _x; }
+        float y() const { return _y; }
         
     private:
         float _x;

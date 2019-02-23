@@ -49,3 +49,13 @@ Vector Vector::operator- (const Vector& v) const
 {
     return Vector(_x - v._x, _y - v._y);
 }
+
+Vector Vector::operator+ (const Vector& v) const
+{
+    return Vector(_x + v._x, _y + v._y);
+}
+
+Vector Vector::operator* (const float s) const
+{
+    return Vector(_x *s, _y *s);
+}

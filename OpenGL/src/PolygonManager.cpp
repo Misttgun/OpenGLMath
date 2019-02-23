@@ -70,16 +70,17 @@ void PolygonManager::on_render(const glm::mat4& vp, Shader* shader)
     for (const auto& polygon : _polygons)
         polygon->onRender(vp, shader);
 
-    if (_windows_triangles.size() == 0)
-        for (const auto& window : _windows)
-            window->onRender(vp, shader);
 
-    else
-        for (const auto& triangle : _windows_triangles)
-            triangle->onRender(vp, shader);
+    for (const auto& window : _windows)
+        window->onRender(vp, shader);
 
+    /*
+    for (const auto& triangle : _windows_triangles)
+        triangle->onRender(vp, shader);
+    
     for (const auto& bounding_box : _bounding_boxes)
         bounding_box->onRender(vp, shader);
+    */
 
     for (const auto& result : _results)
             result->onRender(vp, shader);    
@@ -92,19 +93,34 @@ void PolygonManager::sutherland_ogdmann()
 
     int i = 0;
 
+    _results.resize(_windows_triangles.size() * _polygons.size());
+
     for (const auto& polygon : _polygons)
     {
-        _results[i]->sutherlandOgdmann(polygon, get_current_window());
-        i++;
+        for (const auto& triangle : _windows_triangles)
+        {
+            if (_results[i] == nullptr)
+                _results[i] = std::make_shared<Polygon>(Polygon(0.0f, 1.0f, 0.0f));
+            _results[i]->sutherlandOgdmann(polygon, triangle);
+            i++;
+        }
     }
 }
 
 void PolygonManager::compute_bounding_box()
 {
     int i = 0;
+    const int size = _windows_triangles.size() * _polygons.size();
+
+    _bounding_boxes.resize(size);
+
+    if (size == 0)
+        return;
 
     for (const auto& result : _results)
     {
+        if (_bounding_boxes[i] == nullptr)
+            _bounding_boxes[i] = std::make_shared<Polygon>(Polygon(1.0f, 1.0f, 0.0f));
         result->computeBoundingBox(_bounding_boxes[i]);
         i++;
     }
@@ -124,8 +140,6 @@ void PolygonManager::delete_current_polygon()
         return;
 
     _polygons.pop_back();
-    _results.pop_back();
-    _bounding_boxes.pop_back();
     _current_polygon_index--;
 }
 
