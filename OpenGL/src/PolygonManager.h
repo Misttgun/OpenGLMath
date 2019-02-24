@@ -32,6 +32,9 @@ class PolygonManager
         bool get_last_entry() { return _is_last_entry_polygon;  }
         std::shared_ptr<Polygon> get_current_shape();
         void update_triangles();
+
+        bool enable_triangulation = false;
+        bool enable_bb = false;
     
     private:
         PolygonManager() = default;

@@ -88,10 +88,11 @@ int main(void)
 
         PolygonManager::get()->update_triangles();
         PolygonManager::get()->sutherland_ogdmann();
-        PolygonManager::get()->on_render(vp, shader.get());
         PolygonManager::get()->compute_bounding_box();
+        PolygonManager::get()->on_render(vp, shader.get());
         PolygonManager::get()->on_render_fill(vp, shader.get());
-        
+
+        bool test = false;
 		// Creation du menu IMGUI
 		ImGui_ImplGlfwGL3_NewFrame();
 		ImGui::Begin("Menu");
@@ -110,7 +111,10 @@ int main(void)
 		ImGui::BeginChild("Fenetre", ImVec2(0, 150), true);
         PolygonManager::get()->on_im_gui_render_windows();
 		ImGui::EndChild();
-		ImGui::End();
+        ImGui::Text("Debug:");
+        ImGui::Checkbox("Show triangulation", &PolygonManager::get()->enable_triangulation);
+        ImGui::Checkbox("Show clipping bounding box", &PolygonManager::get()->enable_bb);
+        ImGui::End();
 
 
 		ImGui::Render();

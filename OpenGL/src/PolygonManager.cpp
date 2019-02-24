@@ -78,13 +78,15 @@ void PolygonManager::on_render(const glm::mat4& vp, Shader* shader)
     for (const auto& window : _windows)
         window->onRender(vp, shader);
 
+
+    if (enable_triangulation)
+        for (const auto& triangle : _windows_triangles)
+            triangle->onRender(vp, shader);
+
+    if (enable_bb)
+        for (const auto& bounding_box : _bounding_boxes)
+            bounding_box->onRender(vp, shader);
     
-    for (const auto& triangle : _windows_triangles)
-        triangle->onRender(vp, shader);
-    /*
-    for (const auto& bounding_box : _bounding_boxes)
-        bounding_box->onRender(vp, shader);
-    */
 
     for (const auto& result : _results)
             result->onRender(vp, shader);    
