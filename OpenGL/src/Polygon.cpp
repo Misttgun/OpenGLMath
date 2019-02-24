@@ -433,16 +433,19 @@ void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
     init_ear_clipping(vertex, convex_list, reflex_list, ear_list);
 
     if (vertex.size() == 3)
+    {
+        vector.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.5f, 1.0f)));
+        for (const auto& v : vertex)   
+            vector.back()->addPoint(v->x, v->y);
+        vector.back()->update_edges();
         return;
+    }
 
     // - iterate over created list
     while (!ear_list.empty() && vertex.size() > 1)
     {
         VertexPtr current_ear = ear_list.front();
         VertexListIterator it = std::find(vertex.begin(), vertex.end(), current_ear);
-
-
-        std::cout << "VERTEX SIZE : " << vertex.size() << std::endl;
 
         // - get adjacent Vertex
         auto prev = it == vertex.begin() ? --vertex.end() : std::prev(it, 1);
@@ -604,7 +607,7 @@ void Polygon::move_to_list(VertexPtr& v, VertexList& src, VertexList& dest)
     src.erase(it);
 }
 
-void Polygon::subdivise()
+void Polygon::fractalise()
 {
     const int size = mMousePoints_.size();
     mMousePoints_.resize(2 * size, 0.f);
@@ -637,6 +640,55 @@ void Polygon::subdivise()
             y2 = mMousePoints_[1];
         }
 
+        Vertex v1(x1, y1);
+        Vertex v2(x2, y2);
+        Vector v(v1, v2);
+        Vector n(-v.y(), v.x());
+        n.normalized();
+        n = n * (v.get_magnitude() / 2.0f);
+
+        mMousePoints_[i] = (v1.x + v2.x) / 2.0f + n.x();
+        mMousePoints_[i + 1] = (v1.y + v2.y) / 2.0f + n.y();
+    }
+
+    mVertexSize_ = mMousePoints_.size() / 2;
+
+    update_edges();
+}
+
+void Polygon::subdivise()
+{
+    const int size = mMousePoints_.size();
+    mMousePoints_.resize(2 * size, 0.f);
+    const int new_size = mMousePoints_.size();
+
+    // - make space for new values
+    for (int i = new_size - 3; i > 1; i -= 4)
+    {
+        mMousePoints_[i] = mMousePoints_[i / 2 + 1];
+        mMousePoints_[i - 1] = mMousePoints_[i / 2];
+    }
+
+    // - double add barycenter of current edges to the list of vertex
+    for (int i = 2; i < new_size - 1; i += 4)
+    {
+        float x1, y1, x2, y2;
+        if (i != new_size - 2)
+        {
+            x1 = mMousePoints_[i - 2];
+            x2 = mMousePoints_[i + 2];
+            y1 = mMousePoints_[i - 1];
+            y2 = mMousePoints_[i + 3];
+        }
+
+        else
+        {
+            x1 = mMousePoints_[i - 2];
+            x2 = mMousePoints_[0];
+            y1 = mMousePoints_[i - 1];
+            y2 = mMousePoints_[1];
+        }
+
         mMousePoints_[i] = (x1 + x2) / 2.0f;
         mMousePoints_[i + 1] = (y1 + y2) / 2.0f;
     }
@@ -644,7 +696,7 @@ void Polygon::subdivise()
     std::vector<float> new_vertex(new_size);
 
     for (int i = 0; i < new_size - 2; i++)
-        new_vertex[i] = (mMousePoints_[i] + mMousePoints_[i+2]) / 2.0f;
+        new_vertex[i] = (mMousePoints_[i] + mMousePoints_[i + 2]) / 2.0f;
 
     new_vertex[new_size - 2] = (mMousePoints_[new_size - 2] + mMousePoints_[0]) / 2.0f;
     new_vertex[new_size - 1] = (mMousePoints_[new_size - 1] + mMousePoints_[1]) / 2.0f;

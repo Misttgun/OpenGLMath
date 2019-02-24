@@ -45,6 +45,7 @@ public:
     void ear_clipping(std::vector<std::shared_ptr<Polygon>>& vector);
     void computeBoundingBox(std::shared_ptr<Polygon>& polygon);
     void subdivise();
+    void fractalise();
     int size() const { return mVertexSize_; }
     
 private:
