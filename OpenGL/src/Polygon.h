@@ -32,12 +32,13 @@ using VertexListIterator = VertexList::iterator;
 class Polygon
 {
 public:
-	Polygon(float r = 1.0f, float g = 1.0f, float b = 1.0f);
+	Polygon(float r = 1.0f, float g = 1.0f, float b = 1.0f, unsigned int id = 0);
     Polygon(Polygon&& p);
     ~Polygon() = default;
 
 	void addPoint(float x, float y);
-	void onImGuiRender();
+	void onImGuiRenderPolygon();
+    void onImGuiRenderWindow();
 	void onRender(const glm::mat4& vp, Shader* shader);
     void onRenderFill(const glm::mat4& vp, Shader* shader);
 	void onUpdate();
@@ -75,6 +76,7 @@ private:
 
     float minY_;
     float maxY_;
+    unsigned int id_;
 
 	std::unique_ptr<VertexArray> mVertexArray_;
 	std::unique_ptr<VertexBuffer> mVertexBuffer_;

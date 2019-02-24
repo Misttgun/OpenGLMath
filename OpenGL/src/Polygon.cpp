@@ -9,25 +9,25 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "Vector.h"
 #include <algorithm>
+#include "PolygonManager.h"
 
 // to use M_PI
 const float M_PI = 3.14159265358979f;
 
-Polygon::Polygon(float r, float g, float b)
-	:mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0), mEdges_()
+Polygon::Polygon(float r, float g, float b, unsigned int id)
+    :mVertexSize_(0), mColor_{ r, g, b, 1.0f }, mTranslation_(0, 0, 0), mEdges_(), id_(id)
 {
-	mVertexArray_ = std::make_unique<VertexArray>();
-	mVertexBuffer_ = std::make_unique<VertexBuffer>(nullptr, 0);
-	VertexBufferLayout layout;
-	layout.push<float>(2);
-	mVertexArray_->addBuffer(*mVertexBuffer_, layout);
+    mVertexArray_ = std::make_unique<VertexArray>();
+    mVertexBuffer_ = std::make_unique<VertexBuffer>(nullptr, 0);
+    VertexBufferLayout layout;
+    layout.push<float>(2);
+    mVertexArray_->addBuffer(*mVertexBuffer_, layout);
     minY_ = -1;
     maxY_ = -1;
 }
 
 Polygon::Polygon(Polygon&& p) : mVertexArray_(std::move(p.mVertexArray_)), mEdges_(),
 mVertexBuffer_(std::move(p.mVertexBuffer_)), mVertexSize_(p.mVertexSize_), mTranslation_(p.mTranslation_)
-
 {
     for (int i = 0; i < p.mEdges_.size(); i++)
         mEdges_.push_back(std::move(p.mEdges_[i]));
@@ -37,6 +37,7 @@ mVertexBuffer_(std::move(p.mVertexBuffer_)), mVertexSize_(p.mVertexSize_), mTran
 
     minY_ = p.minY_;
     maxY_ = p.maxY_;
+    id_ = p.id_;
 }
 
 void Polygon::addPoint(float x, float y)
@@ -49,17 +50,45 @@ void Polygon::addPoint(float x, float y)
     update_edges();
 }
 
-void Polygon::onImGuiRender()
+void Polygon::onImGuiRenderPolygon()
 {
-    ImGui::SliderFloat("TranslationX", &mTranslation_.x, 0.0f, 640.0f);
-    ImGui::SliderFloat("TranslationY", &mTranslation_.y, 0.0f, 640.0f);
-    ImGui::ColorEdit4("Color", mColor_);
+    std::string id = std::to_string(id_);
+    std::string tr_x_id = "X translation_" + id;
+    std::string tr_y_id = "Y translation_" + id;
+    std::string color_id = "Color_" + id;
+    std::string clear_id =  "Clear_" + id;
+
+    ImGui::SliderFloat(tr_x_id.c_str(), &mTranslation_.x, 0.0f, 640.0f);
+    ImGui::SliderFloat(tr_y_id.c_str(), &mTranslation_.y, 0.0f, 640.0f);
+    ImGui::ColorEdit4(color_id.c_str(), mColor_);
     
-    if (ImGui::Button("Clear"))
+    if (ImGui::Button(clear_id.c_str()))
     {
         mMousePoints_.clear();
         mVertexSize_ = 0;
         onUpdate();
+        PolygonManager::get()->delete_polygon(this);
+    }
+}
+
+void Polygon::onImGuiRenderWindow()
+{
+    std::string id = std::to_string(id_);
+    std::string tr_x_id = "X translation_" + id;
+    std::string tr_y_id = "Y translation_" + id;
+    std::string color_id = "Color_" + id;
+    std::string clear_id = "Clear_" + id;
+
+    ImGui::SliderFloat(tr_x_id.c_str(), &mTranslation_.x, 0.0f, 640.0f);
+    ImGui::SliderFloat(tr_y_id.c_str(), &mTranslation_.y, 0.0f, 640.0f);
+    ImGui::ColorEdit4(color_id.c_str(), mColor_);
+
+    if (ImGui::Button(clear_id.c_str()))
+    {
+        mMousePoints_.clear();
+        mVertexSize_ = 0;
+        onUpdate();
+        PolygonManager::get()->delete_window(this);
     }
 }
 
@@ -432,11 +461,14 @@ void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
     VertexList vertex, convex_list, reflex_list, ear_list;
     init_ear_clipping(vertex, convex_list, reflex_list, ear_list);
 
+    float offset_x = this->mTranslation_[0];
+    float offset_y = this->mTranslation_[1];
+
     if (vertex.size() == 3)
     {
         vector.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.5f, 1.0f)));
         for (const auto& v : vertex)   
-            vector.back()->addPoint(v->x, v->y);
+            vector.back()->addPoint(v->x + offset_x, v->y + offset_y);
         vector.back()->update_edges();
         return;
     }
@@ -453,9 +485,9 @@ void Polygon::ear_clipping(std::vector<std::shared_ptr<Polygon>> &vector)
 
         // - add in polygon
         vector.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.5f, 1.0f)));
-        vector.back()->addPoint((*prev)->x, (*prev)->y);
-        vector.back()->addPoint((*it)->x, (*it)->y);
-        vector.back()->addPoint((*next)->x, (*next)->y);
+        vector.back()->addPoint((*prev)->x + offset_x, (*prev)->y + offset_y);
+        vector.back()->addPoint((*it)->x + offset_x, (*it)->y + offset_y);
+        vector.back()->addPoint((*next)->x + offset_x, (*next)->y + offset_y);
         vector.back()->update_edges();
 
         // update lists

@@ -86,6 +86,7 @@ int main(void)
 		GL_CALL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
 		renderer.clear();
 
+        PolygonManager::get()->update_triangles();
         PolygonManager::get()->sutherland_ogdmann();
         PolygonManager::get()->on_render(vp, shader.get());
         PolygonManager::get()->compute_bounding_box();
@@ -95,9 +96,11 @@ int main(void)
 		ImGui_ImplGlfwGL3_NewFrame();
 		ImGui::Begin("Menu");
 		ImGui::Text("Instructions:");
-		ImGui::BeginChild("Instructions", ImVec2(0, 50), true);
+		ImGui::BeginChild("Instructions", ImVec2(0, 100), true);
 		ImGui::BulletText("E pour la creation du polygone.");
 		ImGui::BulletText("F pour la creation de la fenetre.");
+        ImGui::BulletText("S pour subdiviser la forme actuelle.");
+        ImGui::BulletText("R pour fractaliser la forme actuelle");
 		ImGui::EndChild();
 		ImGui::Text("Polygon:");
 		ImGui::BeginChild("Polygon", ImVec2(0, 150), true);
@@ -155,13 +158,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     {
         polygonCreation = false;
 
+        bool tmp_entry = PolygonManager::get()->get_last_entry();
 
         if (PolygonManager::get()->get_current_polygon() != nullptr)
-            
-
-        if (PolygonManager::get()->get_current_polygon() != nullptr)
+        {
             if (PolygonManager::get()->get_current_polygon()->size() < 3)
+            {
                 PolygonManager::get()->delete_current_polygon();
+                PolygonManager::get()->set_last_entry(tmp_entry);
+            }
+
+            else
+                PolygonManager::get()->set_last_entry(true);
+        }
     }
 	
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
@@ -173,23 +182,30 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     else if (key == GLFW_KEY_F && action == GLFW_RELEASE)
     {
         fenetreCreation = false;
+        bool tmp_entry = PolygonManager::get()->get_last_entry();
 
         if (PolygonManager::get()->get_current_window()->size() < 3)
+        {
             PolygonManager::get()->delete_current_window();
-
-        if (PolygonManager::get()->get_current_window())
-            PolygonManager::get()->get_current_window()->ear_clipping(PolygonManager::get()->get_triangles());
+            PolygonManager::get()->set_last_entry(tmp_entry);
+        }
+        else
+        {
+            if (PolygonManager::get()->get_current_window())
+                PolygonManager::get()->get_current_window()->ear_clipping(PolygonManager::get()->get_triangles());
+            PolygonManager::get()->set_last_entry(false);
+        }
     }
 
     if (key == GLFW_KEY_S && action == GLFW_PRESS)
     {
-        if (PolygonManager::get()->get_current_polygon() != nullptr)
-            PolygonManager::get()->get_current_polygon()->subdivise();
+        if (PolygonManager::get()->get_current_shape() != nullptr)
+            PolygonManager::get()->get_current_shape()->subdivise();
     }
 
-    if (key == GLFW_KEY_H && action == GLFW_PRESS)
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
-        if (PolygonManager::get()->get_current_polygon() != nullptr)
-            PolygonManager::get()->get_current_polygon()->fractalise();
+        if (PolygonManager::get()->get_current_shape() != nullptr)
+            PolygonManager::get()->get_current_shape()->fractalise();
     }
 }

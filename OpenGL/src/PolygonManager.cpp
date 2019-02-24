@@ -12,28 +12,32 @@ PolygonManager* PolygonManager::get()
 
 void PolygonManager::add_polygon()
 {
-    _polygons.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.0f, 0.0f)));
-    _results.push_back(std::make_shared<Polygon>(Polygon(0.0f, 1.0f, 0.0f)));
-    _bounding_boxes.push_back(std::make_shared<Polygon>(Polygon(1.0f, 1.0f, 0.0f)));
+    _polygons.push_back(std::make_shared<Polygon>(Polygon(1.0f, 0.0f, 0.0f, _polygon_id)));
     _current_polygon_index++;
+    _is_last_entry_polygon = true;
+    _polygon_id++;
 }
 
 void PolygonManager::add_window()
 {
-    _windows.push_back(std::make_shared<Polygon>(Polygon(0.0f, 0.0f, 1.0f)));
+    _windows.push_back(std::make_shared<Polygon>(Polygon(0.0f, 0.0f, 1.0f, _polygon_id)));
     _current_window_index++;
+    _is_last_entry_polygon = false;
+    _polygon_id++;
 }
 
 void PolygonManager::on_im_gui_render_polygons()
 {
     for (const auto& polygon : _polygons)
-        polygon->onImGuiRender();
+        if (polygon != nullptr)
+            polygon->onImGuiRenderPolygon();
 }
 
 void PolygonManager::on_im_gui_render_windows()
 {
     for (const auto& window : _windows)
-        window->onImGuiRender();
+        if (window != nullptr)
+            window->onImGuiRenderWindow();
 }
 
 std::shared_ptr<Polygon> PolygonManager::get_current_polygon()
@@ -74,10 +78,10 @@ void PolygonManager::on_render(const glm::mat4& vp, Shader* shader)
     for (const auto& window : _windows)
         window->onRender(vp, shader);
 
-    /*
+    
     for (const auto& triangle : _windows_triangles)
         triangle->onRender(vp, shader);
-    
+    /*
     for (const auto& bounding_box : _bounding_boxes)
         bounding_box->onRender(vp, shader);
     */
@@ -133,6 +137,60 @@ void PolygonManager::on_render_fill(const glm::mat4& vp, Shader* shader)
         result->onRenderFill(vp, shader);
 }
 
+void PolygonManager::delete_polygon(Polygon* p)
+{
+    if (p == nullptr)
+        return;
+    // can't use std::find as we can't compare smart and raw ptr 
+
+    std::shared_ptr<Polygon> ptr = nullptr;
+
+    for (const auto& polygon : _polygons)
+        if (polygon.get() == p)
+            ptr = polygon;
+
+    if (ptr == nullptr)
+        return;
+
+    const auto it = std::find(_polygons.begin(), _polygons.end(), ptr);
+    _polygons.erase(it);
+    _current_polygon_index--;
+}
+
+
+void PolygonManager::delete_window(Polygon* p)
+{
+    if (p == nullptr)
+        return;
+    // can't use std::find as we can't compare smart and raw ptr 
+
+    std::shared_ptr<Polygon> ptr = nullptr;
+
+    for (const auto& polygon : _windows)
+        if (polygon.get() == p)
+            ptr = polygon;
+
+    if (ptr == nullptr)
+        return;
+
+    const auto it = std::find(_windows.begin(), _windows.end(), ptr);
+    _windows.erase(it);
+    _current_window_index--;
+}
+
+void PolygonManager::update_triangles()
+{
+    // invalidate results and bounding box
+    _windows_triangles.clear();
+    _results.clear();
+    _bounding_boxes.clear();
+
+    for (auto const& window: _windows)
+        if (window != nullptr)
+            window->ear_clipping(get()->get_triangles());
+}
+
+
 
 void PolygonManager::delete_current_polygon()
 {
@@ -150,4 +208,12 @@ void PolygonManager::delete_current_window()
 
     _windows.pop_back();
     _current_window_index--;
+}
+
+std::shared_ptr<Polygon> PolygonManager::get_current_shape()
+{
+    if (_is_last_entry_polygon)
+        return get_current_polygon();
+
+    return get_current_window();
 }
